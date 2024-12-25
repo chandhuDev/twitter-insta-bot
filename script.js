@@ -4,6 +4,9 @@ import fs from "fs";
 import path from "path";
 import cors from "cors";
 import fetch from "node-fetch";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const port = 4000;
@@ -11,35 +14,44 @@ const port = 4000;
 let browser, page;
 const INSTAGRAM_LOGIN_URL = "https://www.instagram.com/accounts/login/";
 const INSTAGRAM_POST_URL = "https://www.instagram.com/create/style/";
-const INSTAGRAM_USERNAME = "chandhu.mpc19@gmail.com";
-const INSTAGRAM_PASSWORD = "Ch@ndhu123";
+const TWITTER_API_TOKEN = process.env.TWITTER_API_TOKEN;
+const INSTAGRAM_USERNAME = process.env.INSTAGRAM_USERNAME;
+const INSTAGRAM_PASSWORD = process.env.INSTAGRAM_PASSWORD;
 
 app.use(express.json());
 app.use(cors());
 
-async function downloadVideo(url, filepath) {
-  const TWEET_URL = `https://api.twitter.com/1.1/statuses/show.json?id=${url}&tweet_mode=extended`;
-  const response = await fetch(TWEET_URL);
+async function downloadVideo(tweetId, filepath) {
+  const TWEET_URL = `https://api.twitter.com/2/tweets/${tweetId}?expansions=attachments.media_keys&media.fields=variants,url`;
+  const response = await fetch(TWEET_URL, {
+    headers: {
+      'Authorization': `Bearer ${TWITTER_API_TOKEN}`
+    }
+  });
   
   if (!response.ok) {
-    throw new Error(`Failed to download video: ${response.statusText}`);
+    throw new Error(`Failed to fetch tweet: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  const videoUrl = data.includes?.media?.[0]?.variants?.[0]?.url;
+  
+  if (!videoUrl) {
+    throw new Error('No video found in tweet');
+  }
+  
+  const videoResponse = await fetch(videoUrl);
+  if (!videoResponse.ok) {
+    throw new Error(`Failed to download video: ${videoResponse.statusText}`);
   }
   
   const fileStream = fs.createWriteStream(filepath);
-  
   return new Promise((resolve, reject) => {
-    response.body.pipe(fileStream);
-    response.body.on("error", (error) => {
-      fileStream.close();
-      reject(error);
-    });
+    videoResponse.body.pipe(fileStream);
+    videoResponse.body.on("error", reject);
     fileStream.on("finish", () => {
       fileStream.close();
       resolve(filepath);
-    });
-    fileStream.on("error", (error) => {
-      fileStream.close();
-      reject(error);
     });
   });
 }

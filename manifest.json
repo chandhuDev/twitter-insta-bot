@@ -1,20 +1,27 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Twitter to Instagram",
   "version": "2.0",
-  "permissions": ["activeTab", "https://x.com/*"],
+  "permissions": [
+    "activeTab",
+    "clipboardRead",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "http://localhost:4000/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://x.com/home"],
+      "matches": ["https://x.com/*"],
       "js": ["content.js"]
     }
   ],
   "background": {
-    "scripts": ["background.js"],
-    "persistent": false
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "browser_action": {
-    
+  "action": {
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",

@@ -4,49 +4,45 @@ function addIconToTweets() {
   tweets.forEach((tweet) => {
     if (tweet.querySelector(".icon")) return;
 
+    // Find the tweet interaction buttons group
+    const actionButtons = tweet.querySelector('[role="group"]');
+    if (!actionButtons) return;
+
+    // Create the Instagram share button
+    const instagramButton = document.createElement("div");
+    instagramButton.className = "instagram-share-icon";
+    instagramButton.style.display = "flex";
+    instagramButton.style.alignItems = "center";
+    instagramButton.style.justifyContent = "center";
+    instagramButton.style.cursor = "pointer";
+    instagramButton.style.padding = "8px";
+    
+    // Create and style the icon
     const icon = document.createElement("img");
-    icon.src = "📤";
-    icon.className = "icon";
-    icon.style.position = "absolute";
-    icon.style.top = "10px";
-    icon.style.right = "10px";
-    icon.style.width = "20px";
-    icon.style.height = "20px";
-    icon.style.cursor = "pointer";
+    icon.src = chrome.runtime.getURL("instagram-icon.png"); // Make sure to add this icon to your extension
+    icon.style.width = "18px";
+    icon.style.height = "18px";
+    
+    instagramButton.appendChild(icon);
 
-    tweet.style.position = "relative";
+    // Insert the button before the last action button (usually the share button)
+    const buttons = actionButtons.children;
+    const lastButton = buttons[buttons.length - 1];
+    actionButtons.insertBefore(instagramButton, lastButton);
 
-    icon.addEventListener("click", async () => {
-      const tweetText =
-        document.getElementById("id__n4hqxpvywq")?.textContent.trim() ||
-        "blah blah blah!";
+    instagramButton.addEventListener("click", async () => {
+      const tweetText = tweet.querySelector('[data-testid="tweetText"]')?.textContent.trim() || "";
       console.log("Tweet text:", tweetText);
 
-      const shareButton = document
-        .getElementById("id__fmjtptxwb68")
-        ?.querySelector('button[aria-label="Share post"]');
-      if (shareButton) {
-        shareButton.addEventListener("click", async (event) => {
-          event.stopPropagation();
-          const menuDiv = document.querySelector('div[role="menu"]');
-          if (menuDiv?.firstElementChild) {
-            menuDiv.firstElementChild.click();
-            console.log("Clicked the first child of the menu.");
-
-            const tweetId = await getTweetLink();
-
-            chrome.runtime.sendMessage({
-              action: "postToInstagram",
-              tweetText,
-              tweetId,
-            });
-          } else {
-            console.error("Menu div or its first child not found.");
-          }
+      const tweetId = await getTweetLink();
+      if (tweetId) {
+        chrome.runtime.sendMessage({
+          action: "postToInstagram",
+          tweetText,
+          tweetId,
         });
       }
     });
-    tweet.appendChild(icon);
   });
 }
 
