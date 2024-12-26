@@ -5,11 +5,14 @@
   "permissions": [
     "activeTab",
     "clipboardRead",
-    "scripting"
+    "scripting",
+    "storage"
+    
   ],
   "host_permissions": [
     "https://x.com/*",
-    "http://localhost:4000/*"
+    "http://localhost:4000/*",
+    "https://localhost:4000/*"
   ],
   "content_scripts": [
     {
@@ -23,9 +26,13 @@
   },
   "action": {
     "default_icon": {
-      "16": "icon.png",
-      "48": "icon.png",
-      "128": "icon.png"
+      "16": "assets/icon.png",
+      "48": "assets/icon.png",
+      "128": "assets/icon.png"
     }
-  }
+  },
+  "web_accessible_resources": [{
+    "resources": ["assets/*"],
+    "matches": ["https://x.com/*"]
+  }]
 }

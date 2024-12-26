@@ -1,79 +1,125 @@
+let isExtensionValid = true;
+
 function addIconToTweets() {
+  
+  if (!isExtensionValid) return;
+
   const tweets = document.querySelectorAll("article");
 
   tweets.forEach((tweet) => {
-    if (tweet.querySelector(".icon")) return;
+    try {
+      if (tweet.querySelector(".instagram-share-icon")) return;
 
-    // Find the tweet interaction buttons group
-    const actionButtons = tweet.querySelector('[role="group"]');
-    if (!actionButtons) return;
+      const actionButtons = tweet.querySelector('[role="group"]');
+      if (!actionButtons) return;
 
-    // Create the Instagram share button
-    const instagramButton = document.createElement("div");
-    instagramButton.className = "instagram-share-icon";
-    instagramButton.style.display = "flex";
-    instagramButton.style.alignItems = "center";
-    instagramButton.style.justifyContent = "center";
-    instagramButton.style.cursor = "pointer";
-    instagramButton.style.padding = "8px";
-    
-    // Create and style the icon
-    const icon = document.createElement("img");
-    icon.src = chrome.runtime.getURL("instagram-icon.png"); // Make sure to add this icon to your extension
-    icon.style.width = "18px";
-    icon.style.height = "18px";
-    
-    instagramButton.appendChild(icon);
+      const instagramButton = document.createElement("div");
+      instagramButton.className = "instagram-share-icon";
+      instagramButton.style.display = "flex";
+      instagramButton.style.alignItems = "center";
+      instagramButton.style.justifyContent = "center";
+      instagramButton.style.cursor = "pointer";
+      instagramButton.style.padding = "8px";
+      instagramButton.style.transition = "all 0.2s ease";
 
-    // Insert the button before the last action button (usually the share button)
-    const buttons = actionButtons.children;
-    const lastButton = buttons[buttons.length - 1];
-    actionButtons.insertBefore(instagramButton, lastButton);
+      const icon = document.createElement("img");
+      icon.src = chrome.runtime.getURL("assets/icon.png");
+      icon.style.transition = "opacity 0.2s ease";
+      icon.style.width = "18px";
+      icon.style.height = "18px";
 
-    instagramButton.addEventListener("click", async () => {
-      const tweetText = tweet.querySelector('[data-testid="tweetText"]')?.textContent.trim() || "";
-      console.log("Tweet text:", tweetText);
+      instagramButton.onmouseenter = () => {
+        if (!isExtensionValid) return;
+        icon.style.opacity = "0.7";
+      };
+      instagramButton.onmouseleave = () => {
+        if (!isExtensionValid) return;
+        icon.style.opacity = "1";
+      };
 
-      const tweetId = await getTweetLink();
-      if (tweetId) {
-        chrome.runtime.sendMessage({
-          action: "postToInstagram",
-          tweetText,
-          tweetId,
-        });
+      instagramButton.appendChild(icon);
+
+      const buttons = actionButtons.children;
+      const lastButton = buttons[buttons.length - 1];
+      actionButtons.insertBefore(instagramButton, lastButton);
+
+      instagramButton.addEventListener("click", async (e) => {
+        if (!isExtensionValid) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+
+        const tweetText = tweet.querySelector('[data-testid="tweetText"]')?.textContent.trim() || "";
+        const timeElement = tweet.querySelector('time');
+        const tweetUrl = timeElement?.parentElement?.getAttribute('href');
+
+        if (tweetUrl) {
+          const tweetId = extractTweetId(tweetUrl);
+          console.log("Tweet text:", tweetText, "Tweet ID:", tweetId);
+
+          if (tweetId) {
+            chrome.runtime.sendMessage(
+              {
+                action: "postToInstagram",
+                tweetText,
+                tweetId,
+              },
+              (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error('Runtime error:', chrome.runtime.lastError);
+                  return;
+                }
+                console.log('Response:', response);
+              }
+            );
+          }
+        }
+      });
+    } catch (error) {
+      if (error.message.includes('Extension context invalidated')) {
+        isExtensionValid = false;
+        console.log('Extension needs to be reloaded');
       }
-    });
+    }
   });
 }
 
-async function extractTweetId(url) {
-  const idPattern = /status\/(\d+)$/;
+function extractTweetId(url) {
+  if (!url) return null;
+  const idPattern = /status\/(\d+)/;
   const match = url.match(idPattern);
   return match ? match[1] : null;
 }
 
-async function getClipboardUrl() {
+// Add error handling to observer
+const observer = new MutationObserver((mutations) => {
   try {
-    const clipboardText = await navigator.clipboard.readText();
-    const urlPattern = /https:\/\/x\.com\/\w+\/status\/\d+/;
-    return urlPattern.test(clipboardText) ? clipboardText : null;
-  } catch (err) {
-    console.error("Failed to read from clipboard:", err);
-    return null;
-  }
-}
-
-async function getTweetLink() {
-  const clipboardUrl = await getClipboardUrl();
-  if (clipboardUrl) {
-    const tweetId = await extractTweetId(clipboardUrl);
-    if (tweetId) {
-      return tweetId;
+    if (!isExtensionValid) {
+      observer.disconnect();
+      return;
+    }
+    addIconToTweets();
+  } catch (error) {
+    if (error.message.includes('Extension context invalidated')) {
+      isExtensionValid = false;
+      observer.disconnect();
+      console.log('Extension needs to be reloaded');
     }
   }
+});
+
+try {
+  observer.observe(document.body, { childList: true, subtree: true });
+  addIconToTweets();
+} catch (error) {
+  if (error.message.includes('Extension context invalidated')) {
+    isExtensionValid = false;
+    console.log('Extension needs to be reloaded');
+  }
 }
 
-const observer = new MutationObserver(addIconToTweets);
-observer.observe(document.body, { childList: true, subtree: true });
-
-addIconToTweets();
+// Add cleanup logic
+chrome.runtime.onSuspend.addListener(() => {
+  isExtensionValid = false;
+  observer.disconnect();
+});
