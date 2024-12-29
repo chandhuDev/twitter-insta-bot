@@ -4,7 +4,8 @@
   "description": "",
   "main": "background.js",
   "scripts": {
-    "test": "nodemon script.js"
+    "test": "nodemon script.js",
+    "insta" : "nodemon abcd.js"
   },
   "keywords": [],
   "author": "",

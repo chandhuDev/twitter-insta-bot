@@ -28,6 +28,7 @@ function addIconToTweets() {
       icon.style.width = "18px";
       icon.style.height = "18px";
 
+
       instagramButton.onmouseenter = () => {
         if (!isExtensionValid) return;
         icon.style.opacity = "0.7";
@@ -36,6 +37,7 @@ function addIconToTweets() {
         if (!isExtensionValid) return;
         icon.style.opacity = "1";
       };
+
 
       instagramButton.appendChild(icon);
 
@@ -94,17 +96,17 @@ function extractTweetId(url) {
 // Add error handling to observer
 const observer = new MutationObserver((mutations) => {
   try {
-    if (!isExtensionValid) {
-      observer.disconnect();
-      return;
-    }
-    addIconToTweets();
+      if (!isExtensionValid) {
+          observer.disconnect();
+          return;
+      }
+      addIconToTweets();
   } catch (error) {
-    if (error.message.includes('Extension context invalidated')) {
-      isExtensionValid = false;
-      observer.disconnect();
-      console.log('Extension needs to be reloaded');
-    }
+      if (error.message.includes('Extension context invalidated')) {
+          isExtensionValid = false;
+          observer.disconnect();
+          console.log('Extension needs to be reloaded');
+      }
   }
 });
 
@@ -113,13 +115,7 @@ try {
   addIconToTweets();
 } catch (error) {
   if (error.message.includes('Extension context invalidated')) {
-    isExtensionValid = false;
-    console.log('Extension needs to be reloaded');
+      isExtensionValid = false;
+      console.log('Extension needs to be reloaded');
   }
 }
-
-// Add cleanup logic
-chrome.runtime.onSuspend.addListener(() => {
-  isExtensionValid = false;
-  observer.disconnect();
-});
